@@ -1,7 +1,7 @@
 import pandas as pd
 from matplotlib import pyplot as ml
 import numpy as np
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import KFold
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error
@@ -36,41 +36,65 @@ print(np.corrcoef(df["Winning time in minutes"],df["Year"])[0,1])
 # decrease of the polynomial regression will bw decided after trial
 X=df["Year"].to_numpy().reshape(-1,1)
 y=df["Winning time in minutes"].to_numpy()
-X_train, X_val, y_train, y_val=train_test_split(X,y, test_size=0.5, random_state=22)
-degrees=[2,5,8,10]
-training_error=[]
-validation_error=[]
-ml.figure()
-n=0
-for i, degree in enumerate(degrees):
-    ml.subplot(len(degrees),1,i+1)
-    lin_regr =LinearRegression(fit_intercept=False)
+#X_train, X_val, y_train, y_val=train_test_split(X,y, test_size=0.5, random_state=22)
+x=0
+mean=0
+while x <20:
+    cv=KFold(n_splits=5, random_state=x, shuffle=True)
+    degrees=[2,4,7,10]
+    training_error=[]
+    validation_error=[]
+    ml.figure()
+    n=0
+    for i, degree in enumerate(degrees):
+        ml.subplot(2,2,i+1)
+        val_er=[]
+        for train_index, index in cv.split(y):
+            X_train, X_val = X[train_index], X[index]
+            y_train, y_val = y[train_index], y[index]
 
-    poly=PolynomialFeatures(degree=degree)
-    X_train_poly=poly.fit_transform(X_train)
-    lin_regr.fit(X_train_poly,y_train)
+            poly = PolynomialFeatures(degree=degree)
+            X_train_poly = poly.fit_transform(X_train)
 
-    y_pred_train=lin_regr.predict(X_train_poly)
-    tr_error = mean_squared_error(y_train, y_pred_train)
-    X_val_poly = poly.fit_transform(X_val)
-    y_pred_val = lin_regr.predict(X_val_poly)
-    val_error = mean_squared_error(y_val, y_pred_val)
+            lin_regr = LinearRegression(fit_intercept=False)
 
-    training_error.append(tr_error)
-    validation_error.append(val_error)
-    ml.plot(X, lin_regr.predict(poly.transform(X.reshape(-1, 1))))
-    ml.scatter(X_train, y_train, color="b")
-    ml.scatter(X_val, y_val, color="r")
-    ml.title(f"polynomial degree {degree}")
-    n+=1
-ml.show()
-print(validation_error)
-print(training_error)
+            lin_regr.fit(X_train_poly, y_train)
+
+            X_val_poly = poly.fit_transform(X_val)
+            y_pred_val = lin_regr.predict(X_val_poly)
+            val_erro = mean_squared_error(y_val, y_pred_val)
+            val_er.append(val_erro)
+        """
+        This part of the code was 
+        
+        poly=PolynomialFeatures(degree=degree)
+        X_train_poly=poly.fit_transform(X_train)
+        lin_regr.fit(X_train_poly,y_train)
+    
+        y_pred_train=lin_regr.predict(X_train_poly)
+        tr_error = mean_squared_error(y_train, y_pred_train)
+        X_val_poly = poly.fit_transform(X_val)
+        y_pred_val = lin_regr.predict(X_val_poly)
+        val_error = mean_squared_error(y_val, y_pred_val)"""
+        val_error=sum(val_er)/len(val_er)
+        #training_error.append(tr_error)
+        validation_error.append(val_error)
+        ml.plot(X, lin_regr.predict(poly.transform(X.reshape(-1, 1))))
+        ml.scatter(X, y, color="r")
+        ml.title(f"polynomial degree {degree}", loc="center")
+        n+=1
+    ml.show()
+    print(validation_error)
 
 
-ml.plot(degrees, validation_error, label="Validation error")
-ml.plot(degrees,training_error,label="Training error")
-ml.legend(loc='best')
-ml.xlabel("Degrees")
-ml.ylabel("Error")
-ml.show()
+    ml.plot(degrees, validation_error, label="Validation error")
+    #ml.plot(degrees,training_error,label="Training error")
+    ml.legend(loc='best')
+    ml.xlabel("Degrees")
+    ml.ylabel("Error")
+    ml.show()
+    mean+=validation_error[0]
+    x+=1
+mean=mean/20
+print(mean)
+
